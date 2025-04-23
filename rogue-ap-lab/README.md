@@ -67,6 +67,7 @@
 
 - `rogue-ap.py`: Main script that sets up the AP and web server
 - `www/index.html`: The fake login page served by the captive portal 
+- `www/res.html`: Redirection page when login credentials have been saved
 - `www/output.log`: Output file where credentials are logged
 
 ---
@@ -98,4 +99,4 @@ MIT License.
 
 ## Author
 
-Created by drlecks – Security Tools Enthusiast
+Created by drlecks
