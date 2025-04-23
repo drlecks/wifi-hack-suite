@@ -21,7 +21,15 @@ Whether you're setting up a lab to test rogue access points, experimenting with 
 
 ## Contributions
 
-Pull requests, ideas, and improvements are welcome — provided they respect the suite's educational and ethical principles.
+Pull requests, ideas, and improvements are welcome, provided they respect the suite's educational and ethical principles.
+
+## License
+
+MIT License.  
+  
+## Author
+
+Created by drlecks – Security Tools Enthusiast
 
 ---
 

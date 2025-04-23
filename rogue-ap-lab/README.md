@@ -56,7 +56,7 @@
 5. Once running:
    - Connect a device to the fake AP
    - Open a browser and navigate to any HTTP site to trigger redirection
-   - Captured credentials are saved to `stolen_credentials.txt`
+   - Captured credentials are saved to `output.log`
 
 6. Terminate the AP:
    - Type `q` and press Enter, or use `Ctrl+C`
@@ -66,8 +66,8 @@
 ## File Structure
 
 - `rogue-ap.py`: Main script that sets up the AP and web server
-- `index.html`: The fake login page served by the captive portal
-- `stolen_credentials.txt`: Output file where credentials are logged
+- `www/index.html`: The fake login page served by the captive portal 
+- `www/output.log`: Output file where credentials are logged
 
 ---
 
@@ -94,11 +94,8 @@
 
 ## License
 
-MIT License.  
-
----
+MIT License.   
 
 ## Author
 
 Created by drlecks – Security Tools Enthusiast
-

@@ -67,7 +67,11 @@ This project is for **educational and controlled testing purposes only**. Do not
 
 Captive Phish Jammer is inspired by the need for active, automated countermeasures in hostile network environments. Its primary purpose is to test, analyze, and disrupt unauthorized phishing portals that exploit captive Wi-Fi setups.
 
----
+## License
 
-MIT License
+MIT License.  
+  
+## Author
+
+Created by drlecks – Security Tools Enthusiast
 
