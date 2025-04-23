@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 import signal
 import subprocess
@@ -96,7 +97,7 @@ class CaptivePortalHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
-def start_server(html_root, bind_ip="192.168.1.1", port=80):
+def start_server(html_root, bind_ip="", port=80):
     os.chdir(html_root)
     server = HTTPServer((bind_ip, port), CaptivePortalHandler)
     print(f"[+] Web server running at http://{bind_ip}:{port}")
@@ -109,7 +110,7 @@ def setup_ap(iface, ssid):
     # Stop interfering services
     print("- NetworkManager")
     run("nmcli radio wifi off")
-    run("rfkill unblock wlan")
+    run("rfkill unblock wifi")
     run(f"nmcli device set {iface} managed no")
     run("systemctl stop NetworkManager")
     run("killall wpa_supplicant")
@@ -124,6 +125,7 @@ def setup_ap(iface, ssid):
     run(f"ip link set {iface} down")
     run(f"iw dev {iface} set type __ap")
     run(f"ip link set {iface} up")
+    run("nmcli radio wifi on")
 
     # Create dnsmasq config
     print("- dnsmask")
@@ -156,7 +158,8 @@ ignore_broadcast_ssid=0
     with open("/tmp/hostapd.conf", "w") as f:
         f.write(hostapd_conf)
 
-    run(f"hostapd /tmp/hostapd.conf")
+    hostProc = run(f"hostapd -dd /tmp/hostapd.conf")
+    run("sleep 2")
 
     # Redirect all HTTP to our server
     print("- iptables redirect")
@@ -170,6 +173,7 @@ def cleanup(iface):
     run("pkill hostapd")
     run("pkill dnsmasq")
     print(f"Setting interface {iface} back to managed mode...")
+    run("rfkill unblock wifi")
     run(f"ip addr flush dev {iface}")
     run(f"ip link set {iface} down")
     run(f"iw dev {iface} set type managed")
