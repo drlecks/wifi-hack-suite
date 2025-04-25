@@ -1,11 +1,11 @@
 import asyncio
 import aiohttp
 import random
+import netifaces
 from bs4 import BeautifulSoup
 
 # === CONFIGURATION ===
-PORTAL_TEST_URL = "http://example.com"  # Change this to the actual portal URL
-FLOOD_COUNT = 10  # Number of form submissions (default: 10)
+FLOOD_COUNT = 250  # Number of form submissions to send
 
 # === Realistic and Absurd User Agents ===
 USER_AGENTS = [
@@ -78,14 +78,19 @@ async def flood(session, action, method, fields, i):
         print(f"[{i}] Error: {e}")
 
 async def main():
-    print("=== Captive Phish Jammer v3.0 (Asyncio) ===")
+    print("=== Captive Phish Jammer ===")
     async with aiohttp.ClientSession() as session:
-        html, url = await fetch_html(session, PORTAL_TEST_URL)
+        # Fetch the captive portal HTML
+        gateway = netifaces.gateways()['default'][netifaces.AF_INET][0]
+        portal_url = f"http://{gateway}"
+
+        print(f"[+] Fetching captive portal from {portal_url}...")
+        html, url = await fetch_html(session, portal_url)
         if not html:
             return
 
         # Optional: Heuristic detection of suspicious portals
-        if any(kw in html.lower() for kw in ["pineapple", "flipper", "reaver", "portal"]):
+        if any(kw in html.lower() for kw in ["pineapple", "flipper", "reaver", "portal", "stealer"]):
             print("[!] Suspicious captive portal detected! Might be a Pineapple or Flipper attack.")
 
         action, method, fields = parse_form(html, url)
